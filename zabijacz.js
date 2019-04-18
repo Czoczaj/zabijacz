@@ -1,69 +1,116 @@
-var randomNum = function(min,max){
-    return(min + Math.floor(Math.random() * (max - min)))
-}
-var randomDmg = function(dmg,acuuracy){
-    var percentage = dmg/100;
-    min = dmg - (100-acuuracy) * percentage
-    return randomNum(min, dmg)
-}
-var Model = function(hp,speed,maxDmg,evasion,accuracy,armor,ability,name){
+
+
+var Model = function(hp,speed,maxDmg,evasion,accuracy,armor,basic = ()=>{},ability = false, ability2 = false,ability3 = false, passive = false,name){
     this.hp = hp;
-    this.ability = ability;
-    this.armor = armor;
-    this.evasion = evasion;
-    this.accuracy = accuracy;
-    this.name = name;
+    this.turnCounter = 0;
     this.speed = speed;
     this.maxDmg = maxDmg;
-    this.turnCounter = 0;
-    this.cooldowns = [];
+    this.minDmg = maxDmg * (accuracy/100);
+    this.evasion = evasion;
+    this.accuracy = accuracy;
+    this.armor = armor;
+    this.basic = basic;
+    this.ability = ability;
+    this.passive = passive;
+    this.name = name;
+    this.ability2 = ability2;
     this.effects = [];
-    this.canUseAbility = [];
-    for(var i = 0;i>ability.length;i++){
-        cooldowns.append(0);
-        canUseAbility.append(true);
+    this.cooldowns = [];
+    //-------------------------------------------------------------------------------------
+    if(ability){
+        this.cooldowns.push([0,canUseAbility]);
     }
+    if(ability2){
+        this.cooldowns.push([0,canUseAbility2]);
+    }
+    if(ability3){
+        this.cooldowns.push([0,canUseAbility3]);
+    }
+    if(this.ability){
+        this.canUseAbility = true;
+    }
+    if(this.ability2){
+        this.canUseAbility2 = true;
+    }
+    if(this.ability3){
+        this.canUseAbility3 = true;
+    }
+    //-------------------------------------------------------------------------------------
 }
-var shieldCrush = function(attacker,defender){
-    var chance = randomNum(0,100);
-    console.log(attacker.maxDmg);
-    if(defender.evasion - 5 < chance) {
-        armor = defender.armor; 
-        defender.effects.append([2,() => defender.armor = armor]); 
-        defender.armor = 0;
-    };
-}
-var OrcCrusher = new Model(200,50,75,15,50,10,[shieldCrush],'orc crusher');
-var OrcAxeman = new Model(100,24,20,45,75,10,['doubleAttack'],'orc axeman');
-var ally = OrcAxeman;
-var enemy = OrcCrusher;
-var cooldownsCheck = function(hero){
-    if(hero.cooldowns.length > 0 ){
-        for(var i = 0; i > hero.cooldowns.length; i++){
-            hero.cooldowns[i] --;
-            if (hero.cooldowns[i] < 1){
-                hero.canUseAbility[i] = true;
+
+var calculateDmg = function(attacker){
+    return attacker.minDmg + Math.floor(Math.random()*(attacker.maxDmg - attacker.minDmg));
+};
+
+var giveDmg = function(attacker,defender){
+    if(Math.random() * 100 > defender.evasion){
+        defender.hp -= calculateDmg(attacker);
+    }
+};
+
+var checkEffects = function(object){
+    if(object.effects.length > 0){
+        for(i=0;i>object.effects.length;i++){
+            if(object.effects[i][0] === 0){
+                object.effects[i][1]();
+            }else{
+                object.effects[i][0] --;
             }
         }
     }
-    if( hero.effects.length > 0){
-        for(var i = 0; i > hero.effects.length; i++){
-            hero.effects[i][0] --;
-            if (hero.effects[i][0] < 1){
-                hero.effects[i][1];
+};
+
+var addEffects = function(object,effect,cooldown,change){
+    var savedVar = effect;
+    var newEffect = effect + effect * (change/100);
+    effect = newEffect;
+    object.effects.push([cooldown,() => effect = savedVar]);
+};
+
+var checkCooldowns = function(object){
+    if(object.cooldowns.length > 0){
+        for(i = 0;i > object.cooldowns.length; i++){
+            if(object.cooldowns[i][0] === 0){
+                object.cooldowns[i][1] = true;
+            }else{
+                object.cooldowns[i][0] --;
             }
         }
-    } 
-}   
-Model.prototype.attack = function(defender,attacker){
-    attacker.turnCounter += 1;
-    var chance = randomNum(0,100);
-    console.log(attacker.maxDmg);
-    if(defender.evasion < chance){
-        defender.hp -= Math.round(randomDmg(attacker.maxDmg,attacker.accuracy) - defender.armor);
-        console.log('hit,' + defender.hp);
-    }else{
-        console.log('evade');
     }
+};
+var check = function(object){
+    checkEffects(object);
+    checkCooldowns(object);
 }
-OrcCrusher.attack(OrcAxeman,OrcCrusher);
+
+var useBasic = function(object,target){
+    check(object);
+    object.basic.user = object;
+    object.basic.target = target;
+    object.basic();
+};
+
+var useAbility = function(){};
+//--------------------------------------------------------------------------------------------
+Model.prototype.AbilityModel = function(user,target,giveDmg1 = 0,addEffectsNeg = 0,addEffectsPos = 0,cooldown = 0){
+    this.user = user;
+    this.target = target;
+    this.giveDmg = giveDmg;
+    this.addEffectsNeg = addEffectsNeg;
+    this.addEffectsPos = addEffectsPos;
+    this.cooldown = cooldown;
+    if (giveDmg1) {
+        giveDmg(user,target);
+    }
+    if(addEffectsPos){
+        for(i = 0; i> addEffectsPos.length;i++){
+            addEffects(user,addEffectsPos[i][0],addEffectsPos[i][1],addEffectsPos[i][2]);
+        }
+    }
+    if(addEffectsNeg){
+        for(i = 0; i> addEffectsNeg.length;i++){
+            addEffects(target,addEffectsNeg[i][0],addEffectsNeg[i][1],addEffectsNeg[i][2]);
+        }
+    }
+    
+}
